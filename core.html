@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>한글 위지윅 에디터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0d;
+    --surface: #1a1815;
+    --surface2: #242220;
+    --border: #333028;
+    --accent: #e8c97a;
+    --accent2: #c4a55e;
+    --text: #f0ead8;
+    --text-muted: #8a8070;
+    --green: #7ab87a;
+    --blue: #6a9fd8;
+    --toolbar-h: 52px;
+    --statusbar-h: 28px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 44px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo { font-family: 'Noto Serif KR', serif; font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.03em; }
+  .header-actions { display: flex; gap: 8px; }
+
+  .btn-header {
+    padding: 5px 14px; border-radius: 4px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted);
+    font-family: 'Noto Sans KR', sans-serif; font-size: 12px; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-header:hover { color: var(--text); border-color: var(--accent2); }
+  .btn-header.primary { background: var(--accent); color: #1a1200; border-color: var(--accent); font-weight: 700; }
+  .btn-header.primary:hover { background: var(--accent2); }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 2px; padding: 0 12px;
+    min-height: var(--toolbar-h); background: var(--surface2);
+    border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: nowrap;
+  }
+
+  .toolbar-sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+
+  .tb-btn {
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    border: none; border-radius: 4px; background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 13px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.12s; user-select: none; -webkit-user-select: none;
+  }
+  .tb-btn:hover { background: var(--border); color: var(--text); }
+  .tb-btn.active { background: rgba(232,201,122,0.15); color: var(--accent); }
+  .tb-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .tb-select {
+    height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface); color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;
+    padding-right: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238a8070'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center;
+  }
+  .tb-select:focus { border-color: var(--accent2); }
+
+  .font-size-input {
+    width: 40px; height: 30px; padding: 0 4px; border: 1px solid var(--border); border-radius: 4px;
+    background: var(--surface); color: var(--text); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 12px; outline: none; text-align: center; user-select: none;
+  }
+  .font-size-input:focus { border-color: var(--accent2); }
+
+  /* 색상 버튼 */
+  .color-btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    width: 32px; height: 36px; border: none; border-radius: 4px; background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif; transition: all 0.12s;
+    user-select: none; -webkit-user-select: none; padding: 4px 0 2px;
+  }
+  .color-btn:hover { background: var(--border); color: var(--text); }
+  .color-btn * { pointer-events: none; }
+
+  .color-indicator { width: 22px; height: 3px; border-radius: 2px; background: var(--accent); }
+
+  /* 색상 팝업 — body 직하위, fixed */
+  .color-popup {
+    position: fixed; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; display: none; flex-wrap: wrap;
+    width: 162px; gap: 4px; z-index: 9999; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  }
+  .color-popup.show { display: flex; }
+
+  .color-swatch {
+    width: 20px; height: 20px; border-radius: 3px; cursor: pointer;
+    border: 2px solid transparent; transition: border-color 0.1s, transform 0.1s; flex-shrink: 0;
+  }
+  .color-swatch:hover { border-color: var(--text); transform: scale(1.15); }
+
+  .editor-container {
+    flex: 1; overflow-y: auto; background: var(--bg); display: flex; justify-content: center; padding: 0 20px; align-items: flex-start;
+  }
+  .editor-container::-webkit-scrollbar { width: 6px; }
+  .editor-container::-webkit-scrollbar-track { background: transparent; }
+  .editor-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .page {
+    width: 100%; max-width: 780px; min-height: 400px; background: #1c1a17;
+    border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+    padding: 60px 72px; margin: 40px 0;
+  }
+
+  #editor {
+    min-height: 300px; outline: none; font-family: 'Noto Serif KR', serif;
+    font-size: 16px; line-height: 1.9; color: var(--text);
+    word-break: keep-all; overflow-wrap: break-word; caret-color: var(--accent);
+  }
+  #editor:empty::before { content: '여기에 글을 작성하세요...'; color: var(--text-muted); pointer-events: none; }
+  #editor h1 { font-family: 'Noto Serif KR', serif; font-size: 2em; font-weight: 700; margin: 0.5em 0 0.3em; line-height: 1.3; }
+  #editor h2 { font-family: 'Noto Serif KR', serif; font-size: 1.5em; font-weight: 600; margin: 0.8em 0 0.3em; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  #editor h3 { font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: 600; margin: 0.8em 0 0.2em; }
+  #editor p { margin: 0.5em 0; }
+  #editor ul, #editor ol { padding-left: 2em; margin: 0.5em 0; }
+  #editor li { margin: 0.2em 0; }
+  #editor blockquote { border-left: 3px solid var(--accent2); margin: 1em 0; padding: 0.5em 1.2em; color: var(--text-muted); background: rgba(232,201,122,0.05); border-radius: 0 4px 4px 0; }
+  #editor code { font-family: 'JetBrains Mono', monospace; background: var(--surface2); padding: 2px 6px; border-radius: 3px; font-size: 0.88em; color: var(--accent); }
+  #editor pre { font-family: 'JetBrains Mono', monospace; background: var(--surface2); padding: 16px 20px; border-radius: 6px; overflow-x: auto; border: 1px solid var(--border); margin: 1em 0; font-size: 13px; color: #c4b8a0; }
+  #editor a { color: var(--blue); text-decoration: underline; text-underline-offset: 2px; }
+  #editor hr { border: none; border-top: 1px solid var(--border); margin: 2em 0; }
+  #editor table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  #editor td, #editor th { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+  #editor th { background: var(--surface2); color: var(--accent); font-weight: 600; }
+  #editor img { max-width: 100%; border-radius: 4px; }
+
+  /* 유튜브 임베드 래퍼 */
+  .yt-wrap {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
+    margin: 1em 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
+  }
+  .yt-wrap iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; height: var(--statusbar-h); background: var(--surface);
+    border-top: 1px solid var(--border); flex-shrink: 0; font-size: 11px; color: var(--text-muted);
+  }
+  .statusbar-left, .statusbar-right { display: flex; align-items: center; gap: 16px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 4px; }
+
+  .dialog-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
+  .dialog-overlay.show { display: flex; }
+  .dialog { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); }
+  .dialog h3 { font-family: 'Noto Serif KR', serif; font-size: 15px; margin-bottom: 16px; color: var(--accent); }
+  .dialog input { width: 100%; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 13px; outline: none; margin-bottom: 10px; }
+  .dialog input:focus { border-color: var(--accent2); }
+  .dialog input::placeholder { color: var(--text-muted); }
+  .dialog-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .dialog-btns button { padding: 7px 16px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif; font-size: 12px; cursor: pointer; }
+  .dialog-btns button.ok { background: var(--accent); color: #1a1200; border-color: var(--accent); font-weight: 700; }
+
+  .find-bar { display: none; align-items: center; gap: 8px; padding: 6px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .find-bar.show { display: flex; }
+  .find-bar input { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font-family: 'Noto Sans KR', sans-serif; font-size: 12px; outline: none; width: 180px; }
+  .find-bar input:focus { border-color: var(--accent2); }
+  .find-bar label { font-size: 11px; color: var(--text-muted); }
+  .find-bar button { height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 11px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; }
+  .find-bar button:hover { color: var(--text); }
+  .find-bar .close-find { margin-left: auto; }
+
+  /* ── 반응형 ───────────────────────────────────── */
+
+  /* 툴바: 화면 작아지면 줄 바꿈 허용 */
+  @media (max-width: 900px) {
+    .toolbar {
+      height: auto;
+      flex-wrap: wrap;
+      padding: 4px 8px;
+      gap: 1px;
+    }
+    .tb-select[style*="width:130px"] { width: 100px !important; }
+    .tb-select[style*="width:90px"]  { width: 74px !important; }
+  }
+
+  /* 태블릿 */
+  @media (max-width: 768px) {
+    .header { padding: 0 12px; height: auto; min-height: 44px; flex-wrap: wrap; gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+    .header-actions { gap: 4px; flex-wrap: wrap; }
+    .btn-header { padding: 4px 10px; font-size: 11px; }
+    .logo { font-size: 13px; }
+
+    .editor-container { padding: 0 8px; }
+    .page { padding: 32px 28px; margin: 16px 0; }
+
+    .statusbar { font-size: 10px; padding: 0 10px; }
+    .statusbar-left, .statusbar-right { gap: 10px; }
+
+    .dialog { width: calc(100vw - 32px); max-width: 360px; }
+
+    .preview-toolbar { padding: 8px 0 6px; }
+    .html-edit-toolbar { padding: 8px 0 6px; flex-direction: column; align-items: flex-start; gap: 6px; }
+
+    .find-bar { flex-wrap: wrap; }
+    .find-bar input { width: 120px; }
+  }
+
+  /* 모바일 */
+  @media (max-width: 480px) {
+    .header-actions .btn-header:not(.primary) { display: none; }
+    /* 인쇄·미리보기만 표시, 나머지는 숨김 */
+    .header-actions .btn-header[onclick="openPreview()"],
+    .header-actions .btn-header[onclick="openHtmlEditor()"],
+    .header-actions .btn-header[onclick="exportHTML()"],
+    .header-actions .btn-header[onclick="exportText()"] { display: none; }
+
+    .editor-container { padding: 0 4px; }
+    .page { padding: 20px 14px; margin: 8px 0; border-radius: 2px; }
+    #editor { font-size: 15px; min-height: 200px; }
+
+    .tb-btn { width: 28px; height: 28px; font-size: 12px; }
+    .tb-select { font-size: 11px; height: 26px; }
+    .font-size-input { width: 34px; height: 26px; font-size: 11px; }
+
+    .statusbar-right { display: none; }
+    .find-bar label { display: none; }
+    .find-bar input { width: 100px; }
+  }
+
+  /* HTML 편집기 모달 */
+  .html-edit-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 2000; flex-direction: column; align-items: center; overflow-y: auto;
+  }
+  .html-edit-overlay.show { display: flex; }
+  .html-edit-toolbar {
+    position: sticky; top: 0; z-index: 10;
+    width: 100%; max-width: 900px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0 8px; gap: 8px;
+  }
+  .html-edit-toolbar span {
+    font-size: 12px; color: var(--text-muted); font-family: 'Noto Sans KR', sans-serif;
+  }
+  .html-edit-toolbar div { display: flex; gap: 8px; }
+  .html-edit-toolbar button {
+    border: none; border-radius: 4px; padding: 7px 16px;
+    font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+  }
+  .html-edit-box {
+    width: 100%; max-width: 900px; margin-bottom: 40px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; overflow: hidden;
+  }
+  #htmlEditArea {
+    width: 100%; min-height: 500px; padding: 24px;
+    background: var(--surface); color: #a8d8a8;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.7; border: none; outline: none; resize: vertical;
+    box-sizing: border-box; white-space: pre; overflow-wrap: normal;
+    overflow-x: auto; tab-size: 2;
+  }
+  .preview-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 2000; flex-direction: column; align-items: center;
+    overflow-y: auto;
+  }
+  .preview-overlay.show { display: flex; }
+
+  /* 미리보기 상단 고정 툴바 */
+  .preview-toolbar {
+    position: sticky; top: 0; z-index: 10;
+    width: 100%; max-width: 800px;
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 12px 0 8px;
+    /* 배경은 투명 — 오버레이 어두운 배경이 비침 */
+  }
+  .preview-toolbar button {
+    border: none; border-radius: 4px; padding: 7px 16px;
+    font-size: 13px; font-family: 'Noto Sans KR', sans-serif; cursor: pointer;
+  }
+  .preview-btn-close { background: #444; color: #fff; }
+  .preview-btn-close:hover { background: #666; }
+  .preview-btn-print { background: var(--accent); color: #1a1200; font-weight: 700; }
+  .preview-btn-print:hover { background: var(--accent2); }
+
+  .preview-box {
+    background: #fff; color: #111; border-radius: 6px;
+    width: 100%; max-width: 800px; padding: 60px 72px;
+    margin-bottom: 40px;
+    font-family: 'Noto Serif KR', serif; font-size: 16px; line-height: 1.9;
+    word-break: keep-all;
+  }
+  .preview-box h1 { font-size: 2em; font-weight: 700; margin: 0.5em 0 0.3em; line-height: 1.3; }
+  .preview-box h2 { font-size: 1.5em; font-weight: 600; margin: 0.8em 0 0.3em; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+  .preview-box h3 { font-size: 1.2em; font-weight: 600; margin: 0.8em 0 0.2em; }
+  .preview-box p { margin: 0.5em 0; }
+  .preview-box ul, .preview-box ol { padding-left: 2em; margin: 0.5em 0; }
+  .preview-box blockquote { border-left: 3px solid #c4a55e; margin: 1em 0; padding: 0.5em 1.2em; color: #666; background: #fdf8ee; border-radius: 0 4px 4px 0; }
+  .preview-box table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+  .preview-box td, .preview-box th { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  .preview-box th { background: #f5f0e8; font-weight: 600; }
+  .preview-box a { color: #3a6a9a; }
+  .preview-box hr { border: none; border-top: 1px solid #ddd; margin: 2em 0; }
+  .preview-box code { font-family: 'JetBrains Mono', monospace; background: #f4f0e8; padding: 2px 6px; border-radius: 3px; font-size: 0.88em; }
+  .preview-box pre { font-family: 'JetBrains Mono', monospace; background: #f4f0e8; padding: 16px 20px; border-radius: 6px; overflow-x: auto; border: 1px solid #ddd; margin: 1em 0; font-size: 13px; }
+  .preview-box img { max-width: 100%; border-radius: 4px; }
+
+  /* 미리보기 안 유튜브 */
+  .preview-box .yt-wrap {
+    position: relative; width: 100%; padding-bottom: 56.25%;
+    margin: 1em 0; background: #000; border-radius: 6px; overflow: hidden;
+  }
+  .preview-box .yt-wrap iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: none;
+  }
+
+  /* 유튜브 iframe 임베드 */
+  .yt-wrap {
+    position: relative; width: 100%; padding-bottom: 56.25%;
+    margin: 1em 0; background: #000; border-radius: 6px; overflow: hidden;
+  }
+  .yt-wrap iframe {
+    position: absolute; inset: 0; width: 100%; height: 100%; border: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- 색상 팝업: <script> 보다 먼저 DOM에 존재해야 buildPopup()이 작동함 -->
+<div class="color-popup" id="textColorPopup"></div>
+<div class="color-popup" id="bgColorPopup"></div>
+
+<div class="header">
+  <div class="logo">✦ 채아 에디터</div>
+  <div class="header-actions">
+    <button class="btn-header" onclick="openPreview()">미리보기</button>
+    <button class="btn-header" onclick="openHtmlEditor()">HTML 수정</button>
+    <button class="btn-header" onclick="exportHTML()">HTML 내보내기</button>
+    <button class="btn-header" onclick="exportText()">텍스트 저장</button>
+    <button class="btn-header primary" onclick="printDoc()">인쇄</button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <select class="tb-select" id="fontFamily" onchange="execCmd('fontName', this.value)" style="width:130px">
+    <option value="'Noto Serif KR', serif">나눔명조</option>
+    <option value="'Noto Sans KR', sans-serif">나눔고딕</option>
+    <option value="'JetBrains Mono', monospace">등폭</option>
+    <option value="Georgia, serif">Georgia</option>
+    <option value="'Times New Roman', serif">Times New Roman</option>
+  </select>
+
+  <div style="display:flex;align-items:center;gap:1px">
+    <button class="tb-btn" style="width:18px;font-size:10px" onmousedown="stepFontSize(-1,event)">−</button>
+    <input class="font-size-input" id="fontSize" type="text" inputmode="numeric" value="16"
+      onmousedown="event.preventDefault(); this.focus();"
+      onkeydown="handleFontSizeKey(event)">
+    <button class="tb-btn" style="width:18px;font-size:10px" onmousedown="stepFontSize(1,event)">+</button>
+  </div>
+
+  <div class="toolbar-sep"></div>
+
+  <select class="tb-select" id="blockFormat" onchange="execFormatBlock(this.value)" style="width:90px">
+    <option value="p">본문</option>
+    <option value="h1">제목 1</option>
+    <option value="h2">제목 2</option>
+    <option value="h3">제목 3</option>
+    <option value="blockquote">인용</option>
+    <option value="pre">코드</option>
+  </select>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" id="btn-bold"          onmousedown="event.preventDefault(); execCmd('bold')"><b>B</b></button>
+  <button class="tb-btn" id="btn-italic"         onmousedown="event.preventDefault(); execCmd('italic')"><i>I</i></button>
+  <button class="tb-btn" id="btn-underline"      onmousedown="event.preventDefault(); execCmd('underline')"><u>U</u></button>
+  <button class="tb-btn" id="btn-strikethrough"  onmousedown="event.preventDefault(); execCmd('strikeThrough')"><s>S</s></button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="color-btn" id="textColorBtn" onmousedown="onColorBtnDown(event,'text')">
+    <span style="pointer-events:none">A</span>
+    <div class="color-indicator" id="textColorIndicator" style="pointer-events:none"></div>
+  </button>
+
+  <button class="color-btn" id="bgColorBtn" onmousedown="onColorBtnDown(event,'bg')">
+    <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor" style="pointer-events:none"><rect x="2" y="2" width="12" height="12" rx="2"/></svg>
+    <div class="color-indicator" id="bgColorIndicator" style="background:#555048;pointer-events:none"></div>
+  </button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('justifyLeft')">
+    <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="2" rx="1"/><rect x="1" y="7" width="10" height="2" rx="1"/><rect x="1" y="11" width="12" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('justifyCenter')">
+    <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="2" rx="1"/><rect x="3" y="7" width="10" height="2" rx="1"/><rect x="2" y="11" width="12" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('justifyRight')">
+    <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="2" rx="1"/><rect x="5" y="7" width="10" height="2" rx="1"/><rect x="3" y="11" width="12" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('justifyFull')">
+    <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="2" rx="1"/><rect x="1" y="7" width="14" height="2" rx="1"/><rect x="1" y="11" width="14" height="2" rx="1"/></svg>
+  </button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('insertUnorderedList')">
+    <svg viewBox="0 0 16 16"><circle cx="3" cy="4" r="1.5"/><rect x="6" y="3" width="9" height="2" rx="1"/><circle cx="3" cy="8" r="1.5"/><rect x="6" y="7" width="9" height="2" rx="1"/><circle cx="3" cy="12" r="1.5"/><rect x="6" y="11" width="9" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('insertOrderedList')">
+    <svg viewBox="0 0 16 16"><text x="1" y="6" font-size="6" fill="currentColor" font-family="monospace">1.</text><rect x="6" y="3" width="9" height="2" rx="1"/><text x="1" y="10" font-size="6" fill="currentColor" font-family="monospace">2.</text><rect x="6" y="7" width="9" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('outdent')">
+    <svg viewBox="0 0 16 16"><path d="M6 4l-4 4 4 4V4z"/><rect x="7" y="3" width="8" height="2" rx="1"/><rect x="7" y="7" width="8" height="2" rx="1"/><rect x="7" y="11" width="8" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('indent')">
+    <svg viewBox="0 0 16 16"><path d="M1 4l4 4-4 4V4z"/><rect x="7" y="3" width="8" height="2" rx="1"/><rect x="7" y="7" width="8" height="2" rx="1"/><rect x="7" y="11" width="8" height="2" rx="1"/></svg>
+  </button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" onclick="openLinkDialog()">
+    <svg viewBox="0 0 16 16"><path d="M6.5 9.5a3 3 0 0 0 4.243 0l2-2a3 3 0 0 0-4.243-4.243l-1 1a1 1 0 1 0 1.414 1.414l1-1a1 1 0 0 1 1.414 1.414l-2 2a1 1 0 0 1-1.414 0 1 1 0 1 0-1.414 1.415z"/><path d="M9.5 6.5a3 3 0 0 0-4.243 0l-2 2a3 3 0 0 0 4.243 4.243l1-1a1 1 0 1 0-1.414-1.414l-1 1a1 1 0 0 1-1.414-1.414l2-2a1 1 0 0 1 1.414 0 1 1 0 1 0 1.414-1.415z"/></svg>
+  </button>
+  <button class="tb-btn" onclick="openYoutubeDialog()" title="유튜브 동영상 삽입">
+    <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 5.5l4 2.5-4 2.5V5.5z"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); insertHR()">
+    <svg viewBox="0 0 16 16"><rect x="1" y="7" width="14" height="2" rx="1"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); openTableDialog()">
+    <svg viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="1" y1="6" x2="15" y2="6" stroke="currentColor" stroke-width="1.2"/><line x1="8" y1="1" x2="8" y2="15" stroke="currentColor" stroke-width="1.2"/></svg>
+  </button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('undo')">
+    <svg viewBox="0 0 16 16"><path d="M2 8a6 6 0 1 1 1.757 4.243" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M2 4v4h4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="tb-btn" onmousedown="event.preventDefault(); execCmd('redo')">
+    <svg viewBox="0 0 16 16"><path d="M14 8a6 6 0 1 0-1.757 4.243" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M14 4v4h-4" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+
+  <div class="toolbar-sep"></div>
+
+  <button class="tb-btn" onclick="toggleFind()">
+    <svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5" fill="none"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="find-bar" id="findBar">
+  <label>찾기:</label>
+  <input type="text" id="findInput" placeholder="검색어 입력">
+  <label>바꾸기:</label>
+  <input type="text" id="replaceInput" placeholder="바꿀 내용">
+  <button onclick="findText()">찾기</button>
+  <button onclick="replaceText()">바꾸기</button>
+  <button onclick="replaceAll()">모두 바꾸기</button>
+  <button class="close-find" onclick="toggleFind()">✕</button>
+</div>
+
+<div class="editor-container">
+  <div class="page">
+    <div id="editor" contenteditable="true" spellcheck="true"></div>
+  </div>
+</div>
+
+<div class="statusbar">
+  <div class="statusbar-left">
+    <span><span class="status-dot"></span>한글 지원</span>
+    <span id="wordCount">0 단어</span>
+    <span id="charCount">0 자</span>
+  </div>
+  <div class="statusbar-right">
+  </div>
+</div>
+
+<!-- HTML 편집기 모달 -->
+<div class="html-edit-overlay" id="htmlEditOverlay" onclick="closeHtmlEditorOutside(event)">
+  <div class="html-edit-toolbar">
+    <span>⚠ HTML을 직접 수정합니다. 잘못된 태그는 레이아웃을 깨뜨릴 수 있습니다.</span>
+    <div>
+      <button style="background:#444;color:#fff" onclick="closeHtmlEditor()">✕ 취소</button>
+      <button style="background:var(--accent);color:#1a1200;font-weight:700" onclick="applyHtml()">✔ 적용</button>
+    </div>
+  </div>
+  <div class="html-edit-box">
+    <textarea id="htmlEditArea" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<!-- 미리보기 모달 -->
+<div class="preview-overlay" id="previewOverlay" onclick="closePreviewOutside(event)">
+  <div class="preview-toolbar">
+    <button class="preview-btn-print" onclick="printDoc()">🖨 인쇄</button>
+    <button class="preview-btn-close" onclick="closePreview()">✕ 닫기</button>
+  </div>
+  <div class="preview-box" id="previewBox">
+    <div id="previewContent"></div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="linkDialog">
+  <div class="dialog">
+    <h3>링크 삽입</h3>
+    <input type="text" id="linkText" placeholder="표시 텍스트">
+    <input type="url" id="linkUrl" placeholder="https://">
+    <div class="dialog-btns">
+      <button onclick="closeLinkDialog()">취소</button>
+      <button class="ok" onclick="insertLink()">삽입</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="youtubeDialog">
+  <div class="dialog">
+    <h3>▶ 유튜브 동영상 삽입</h3>
+    <input type="url" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
+    <div style="font-size:11px;color:var(--text-muted);margin-top:-6px;margin-bottom:10px">
+      youtube.com/watch?v=… 또는 youtu.be/… 링크를 붙여넣으세요
+    </div>
+    <div class="dialog-btns">
+      <button onclick="closeYoutubeDialog()">취소</button>
+      <button class="ok" onclick="insertYoutube()">삽입</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" id="tableDialog">
+  <div class="dialog">
+    <h3>표 삽입</h3>
+    <div style="display:flex;gap:16px;margin-bottom:10px">
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">행 수</div>
+        <input type="number" id="tableRows" value="3" min="1" max="30"
+          style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;outline:none;text-align:center">
+      </div>
+      <div style="flex:1">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">열 수</div>
+        <input type="number" id="tableCols" value="3" min="1" max="20"
+          style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;outline:none;text-align:center">
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">첫 번째 행은 헤더로 만들어집니다</div>
+    <div class="dialog-btns">
+      <button onclick="closeTableDialog()">취소</button>
+      <button class="ok" onclick="insertTable()">삽입</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const editor = document.getElementById('editor');
+  let savedRange = null;
+
+  // ── 선택 영역 저장/복원 ──────────────────────────
+  function saveSelection() {
+    const s = window.getSelection();
+    if (s && s.rangeCount > 0) savedRange = s.getRangeAt(0).cloneRange();
+  }
+
+  function restoreSelection() {
+    editor.focus();
+    if (savedRange) {
+      const s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(savedRange);
+    }
+  }
+
+  editor.addEventListener('mouseup', saveSelection);
+  editor.addEventListener('keyup', saveSelection);
+
+  // ── 색상 팝업 ────────────────────────────────────
+  const COLORS = [
+    '#f0ead8','#c4b8a0','#8a8070','#555048','#1a1815',
+    '#e8c97a','#c4a55e','#9a7a40','#6a5020','#3a2c10',
+    '#d96c5a','#b04030','#7a2010','#e09060','#c06030',
+    '#7ab87a','#4a8840','#2a5820','#6a9fd8','#3a6a9a',
+    '#9a7ad8','#6a4aaa','#d87ab0','#aa4878','#ffffff',
+  ];
+
+  function buildPopup(popupId, mode) {
+    const popup = document.getElementById(popupId);
+    if (!popup) { console.error('팝업을 찾을 수 없음:', popupId); return; }
+
+    COLORS.forEach(color => {
+      const s = document.createElement('div');
+      s.className = 'color-swatch';
+      s.style.background = color;
+      s.addEventListener('mousedown', e => {
+        e.preventDefault();
+        applyColor(mode, color);
+        closeAllPopups();
+      });
+      popup.appendChild(s);
+    });
+
+    // 초기화 스와치
+    const clear = document.createElement('div');
+    clear.className = 'color-swatch';
+    clear.style.cssText = 'background:transparent;border:1px dashed #666;';
+    clear.title = '없음';
+    clear.addEventListener('mousedown', e => {
+      e.preventDefault();
+      applyColor(mode, null);
+      closeAllPopups();
+    });
+    popup.appendChild(clear);
+  }
+
+  // 팝업이 이미 DOM에 존재하므로 바로 빌드
+  buildPopup('textColorPopup', 'text');
+  buildPopup('bgColorPopup', 'bg');
+
+  function applyColor(mode, color) {
+    restoreSelection();
+    if (mode === 'text') {
+      if (color) {
+        document.execCommand('foreColor', false, color);
+        document.getElementById('textColorIndicator').style.background = color;
+      }
+    } else {
+      document.execCommand('hiliteColor', false, color || 'transparent');
+      document.getElementById('bgColorIndicator').style.background = color || '#555048';
+    }
+    saveSelection();
+  }
+
+  function closeAllPopups() {
+    document.getElementById('textColorPopup').classList.remove('show');
+    document.getElementById('bgColorPopup').classList.remove('show');
+  }
+
+  function onColorBtnDown(e, mode) {
+    e.preventDefault(); // 포커스 이동 차단 → 선택 영역 유지
+    saveSelection();    // 현재 선택 저장
+
+    const popupId = mode === 'text' ? 'textColorPopup' : 'bgColorPopup';
+    const otherId  = mode === 'text' ? 'bgColorPopup'  : 'textColorPopup';
+    const popup = document.getElementById(popupId);
+
+    document.getElementById(otherId).classList.remove('show');
+
+    if (popup.classList.contains('show')) {
+      popup.classList.remove('show');
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    popup.style.left = rect.left + 'px';
+    popup.style.top  = (rect.bottom + 4) + 'px';
+    popup.classList.add('show');
+  }
+
+  // 팝업 외부 클릭 시 닫기
+  document.addEventListener('mousedown', e => {
+    const tp = document.getElementById('textColorPopup');
+    const bp = document.getElementById('bgColorPopup');
+    if (!tp.contains(e.target) && e.target !== document.getElementById('textColorBtn') &&
+        !bp.contains(e.target) && e.target !== document.getElementById('bgColorBtn')) {
+      closeAllPopups();
+    }
+  });
+
+  // ── 기본 실행 ────────────────────────────────────
+  function execCmd(cmd, value = null) {
+    editor.focus();
+    document.execCommand(cmd, false, value);
+    updateToolbarState();
+  }
+
+  function execFormatBlock(tag) {
+    editor.focus();
+    document.execCommand('formatBlock', false, tag);
+    updateToolbarState();
+  }
+
+  // ── 글자 크기 ────────────────────────────────────
+  function setFontSize(px) {
+    if (!px || px < 8) return;
+    restoreSelection();
+    document.execCommand('fontSize', false, '7');
+    editor.querySelectorAll('font[size="7"]').forEach(el => {
+      el.removeAttribute('size');
+      el.style.fontSize = px + 'px';
+    });
+    saveSelection();
+  }
+
+  function handleFontSizeKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); setFontSize(parseInt(e.target.value)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); const v = Math.min(96,(parseInt(e.target.value)||16)+1); e.target.value=v; setFontSize(v); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); const v = Math.max(8,(parseInt(e.target.value)||16)-1); e.target.value=v; setFontSize(v); }
+  }
+
+  function stepFontSize(delta, e) {
+    e.preventDefault();
+    const input = document.getElementById('fontSize');
+    const v = Math.min(96, Math.max(8, (parseInt(input.value)||16) + delta));
+    input.value = v;
+    setFontSize(v);
+  }
+
+  // ── 툴바 상태 ────────────────────────────────────
+  function updateToolbarState() {
+    ['bold','italic','underline','strikethrough'].forEach(cmd => {
+      const realCmd = cmd === 'strikethrough' ? 'strikeThrough' : cmd;
+      const btn = document.getElementById('btn-' + cmd);
+      if (btn) btn.classList.toggle('active', document.queryCommandState(realCmd));
+    });
+
+    // 블록 포맷
+    const blk = document.queryCommandValue('formatBlock').toLowerCase();
+    const blockSel = document.getElementById('blockFormat');
+    blockSel.value = ['h1','h2','h3','blockquote','pre'].includes(blk) ? blk : 'p';
+
+    // 커서 위치 요소의 computed style로 폰트·크기 읽기
+    const s = window.getSelection();
+    if (!s || !s.rangeCount) return;
+    const node = s.getRangeAt(0).startContainer;
+    const el = node.nodeType === 3 ? node.parentElement : node; // 텍스트노드면 부모로
+    if (!el || !editor.contains(el)) return;
+    const cs = window.getComputedStyle(el);
+
+    // 글씨 크기
+    const pxSize = parseFloat(cs.fontSize);
+    if (!isNaN(pxSize)) {
+      document.getElementById('fontSize').value = Math.round(pxSize);
+    }
+
+    // 폰트 패밀리 — computed font-family와 option value를 느슨하게 매칭
+    const computedFont = cs.fontFamily.toLowerCase().replace(/['"]/g, '');
+    const fontSel = document.getElementById('fontFamily');
+    let matched = false;
+    for (const opt of fontSel.options) {
+      const optFont = opt.value.toLowerCase().replace(/['"]/g, '');
+      // 첫 번째 폰트명만 비교
+      const optFirst = optFont.split(',')[0].trim();
+      const compFirst = computedFont.split(',')[0].trim();
+      if (compFirst === optFirst) {
+        fontSel.value = opt.value;
+        matched = true;
+        break;
+      }
+    }
+    // 글자색
+    const color = cs.color;
+    if (color) {
+      document.getElementById('textColorIndicator').style.background = color;
+    }
+
+    // 배경색 — 투명이면 부모를 타고 올라가며 실제 색 탐색
+    let bgEl = el;
+    let bgColor = 'transparent';
+    while (bgEl && bgEl !== editor) {
+      const bg = window.getComputedStyle(bgEl).backgroundColor;
+      if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') {
+        bgColor = bg;
+        break;
+      }
+      bgEl = bgEl.parentElement;
+    }
+    document.getElementById('bgColorIndicator').style.background =
+      bgColor === 'transparent' ? '#555048' : bgColor;
+  }
+
+  editor.addEventListener('keyup', updateToolbarState);
+  editor.addEventListener('mouseup', updateToolbarState);
+
+  // ── 단어/글자 수 ─────────────────────────────────
+  function updateCount() {
+    const text = editor.innerText || '';
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.replace(/\s/g, '').length;
+    document.getElementById('wordCount').textContent = words.toLocaleString() + ' 단어';
+    document.getElementById('charCount').textContent = chars.toLocaleString() + ' 자';
+  }
+  editor.addEventListener('input', updateCount);
+
+  // ── 초기화 ───────────────────────────────────────
+  localStorage.removeItem('hangeul_editor_v3'); // 기존 저장 데이터 제거
+  editor.innerHTML = '';
+  updateCount();
+
+  // ── 링크 ─────────────────────────────────────────
+  function openLinkDialog() {
+    saveSelection();
+    const s = window.getSelection();
+    document.getElementById('linkText').value = s ? s.toString() : '';
+    document.getElementById('linkUrl').value = 'https://';
+    document.getElementById('linkDialog').classList.add('show');
+    document.getElementById('linkUrl').focus();
+  }
+  function closeLinkDialog() { document.getElementById('linkDialog').classList.remove('show'); }
+  function insertLink() {
+    const url = document.getElementById('linkUrl').value.trim();
+    const text = document.getElementById('linkText').value.trim() || url;
+    if (!url) return closeLinkDialog();
+    restoreSelection();
+    const s = window.getSelection();
+    if (s && !s.isCollapsed) document.execCommand('createLink', false, url);
+    else document.execCommand('insertHTML', false, `<a href="${url}" target="_blank">${text}</a>`);
+    closeLinkDialog();
+  }
+  document.getElementById('linkDialog').addEventListener('click', e => { if (e.target === document.getElementById('linkDialog')) closeLinkDialog(); });
+  document.getElementById('linkUrl').addEventListener('keydown', e => { if (e.key==='Enter') insertLink(); if (e.key==='Escape') closeLinkDialog(); });
+
+  // ── 유튜브 ───────────────────────────────────────
+  function openYoutubeDialog() {
+    saveSelection();
+    document.getElementById('youtubeUrl').value = '';
+    document.getElementById('youtubeDialog').classList.add('show');
+    document.getElementById('youtubeUrl').focus();
+  }
+  function closeYoutubeDialog() { document.getElementById('youtubeDialog').classList.remove('show'); }
+
+  function extractYoutubeId(url) {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+      /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
+    ];
+    for (const p of patterns) {
+      const m = url.match(p);
+      if (m) return m[1];
+    }
+    return null;
+  }
+
+  function buildYoutubeHTML(videoId) {
+    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`;
+    return `<div class="yt-wrap" contenteditable="false" data-vid="${videoId}"><iframe src="${embedUrl}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin"></iframe></div><p><br></p>`;
+  }
+
+  // 붙여넣기 시 유튜브 URL 자동 감지
+  editor.addEventListener('paste', e => {
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain').trim();
+    if (!text) return;
+    const videoId = extractYoutubeId(text);
+    if (videoId) {
+      e.preventDefault();
+      document.execCommand('insertHTML', false, buildYoutubeHTML(videoId));
+    }
+  });
+
+  function insertYoutube() {
+    const url = document.getElementById('youtubeUrl').value.trim();
+    const videoId = extractYoutubeId(url);
+    if (!videoId) {
+      alert('올바른 유튜브 링크를 입력해주세요.\n예: https://www.youtube.com/watch?v=XXXXXXXXXXX');
+      return;
+    }
+    restoreSelection();
+    document.execCommand('insertHTML', false, buildYoutubeHTML(videoId));
+    closeYoutubeDialog();
+  }
+
+  document.getElementById('youtubeDialog').addEventListener('click', e => { if (e.target === document.getElementById('youtubeDialog')) closeYoutubeDialog(); });
+  document.getElementById('youtubeUrl').addEventListener('keydown', e => { if (e.key==='Enter') insertYoutube(); if (e.key==='Escape') closeYoutubeDialog(); });
+
+  // ── 미리보기 / 인쇄용 HTML 생성 ──────────────────
+  function getRenderedHTML() {
+    const clone = editor.cloneNode(true);
+    // yt-card는 썸네일+링크 방식이라 변환 없이 그대로 사용
+    return clone.innerHTML;
+  }
+
+  // ── HTML 편집기 ───────────────────────────────────
+  function openHtmlEditor() {
+    // 현재 에디터 innerHTML을 보기 좋게 포맷해서 textarea에 넣기
+    const raw = editor.innerHTML;
+    document.getElementById('htmlEditArea').value = formatHTML(raw);
+    document.getElementById('htmlEditOverlay').classList.add('show');
+    document.getElementById('htmlEditArea').focus();
+  }
+
+  function closeHtmlEditor() {
+    document.getElementById('htmlEditOverlay').classList.remove('show');
+  }
+
+  function closeHtmlEditorOutside(e) {
+    if (e.target === document.getElementById('htmlEditOverlay')) closeHtmlEditor();
+  }
+
+  function applyHtml() {
+    editor.innerHTML = document.getElementById('htmlEditArea').value;
+    closeHtmlEditor();
+    updateCount();
+    saveSelection();
+  }
+
+  // HTML 들여쓰기 포맷터
+  function formatHTML(html) {
+    const INDENT = '  ';
+    let level = 0;
+    return html
+      .replace(/>\s*</g, '>\n<')       // 태그 사이 줄바꿈
+      .split('\n')
+      .map(line => {
+        line = line.trim();
+        if (!line) return '';
+        if (/^<\//.test(line)) level = Math.max(0, level - 1);
+        const indented = INDENT.repeat(level) + line;
+        if (/^<[^/!][^>]*[^/]>$/.test(line) && !/^<(br|hr|img|input|meta|link)/.test(line)) level++;
+        return indented;
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  // Tab 키로 들여쓰기 (textarea 안에서)
+  document.getElementById('htmlEditArea').addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ta = e.target;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      ta.value = ta.value.slice(0, start) + '  ' + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + 2;
+    }
+    if (e.key === 'Escape') closeHtmlEditor();
+  });
+
+  // ── 미리보기 ─────────────────────────────────────
+  function openPreview() {
+    document.getElementById('previewContent').innerHTML = getRenderedHTML();
+    document.getElementById('previewOverlay').classList.add('show');
+  }
+  function closePreview() { document.getElementById('previewOverlay').classList.remove('show'); }
+  function closePreviewOutside(e) {
+    if (e.target === document.getElementById('previewOverlay')) closePreview();
+  }
+
+  // ── HR / 표 ──────────────────────────────────────
+  function insertHR() { restoreSelection(); document.execCommand('insertHTML', false, '<hr>'); }
+
+  function openTableDialog() {
+    saveSelection();
+    document.getElementById('tableRows').value = 3;
+    document.getElementById('tableCols').value = 3;
+    document.getElementById('tableDialog').classList.add('show');
+    document.getElementById('tableRows').focus();
+  }
+  function closeTableDialog() { document.getElementById('tableDialog').classList.remove('show'); }
+
+  function insertTable() {
+    const rows = Math.min(30, Math.max(1, parseInt(document.getElementById('tableRows').value) || 3));
+    const cols = Math.min(20, Math.max(1, parseInt(document.getElementById('tableCols').value) || 3));
+    let html = '<table>';
+    // 헤더 행
+    html += '<tr>';
+    for (let c = 0; c < cols; c++) html += `<th>열 ${c + 1}</th>`;
+    html += '</tr>';
+    // 데이터 행
+    for (let r = 1; r < rows; r++) {
+      html += '<tr>';
+      for (let c = 0; c < cols; c++) html += '<td>내용</td>';
+      html += '</tr>';
+    }
+    html += '</table><p><br></p>';
+    restoreSelection();
+    document.execCommand('insertHTML', false, html);
+    closeTableDialog();
+  }
+
+  document.getElementById('tableDialog').addEventListener('click', e => { if (e.target === document.getElementById('tableDialog')) closeTableDialog(); });
+  document.getElementById('tableRows').addEventListener('keydown', e => { if (e.key === 'Enter') insertTable(); if (e.key === 'Escape') closeTableDialog(); });
+  document.getElementById('tableCols').addEventListener('keydown', e => { if (e.key === 'Enter') insertTable(); if (e.key === 'Escape') closeTableDialog(); });
+
+  // ── 찾기/바꾸기 ──────────────────────────────────
+  function toggleFind() {
+    const bar = document.getElementById('findBar');
+    bar.classList.toggle('show');
+    if (bar.classList.contains('show')) document.getElementById('findInput').focus();
+  }
+  function findText() { const q = document.getElementById('findInput').value; if (q) window.find(q, false, false, true); }
+  function replaceText() {
+    const q = document.getElementById('findInput').value;
+    const r = document.getElementById('replaceInput').value;
+    if (!q) return;
+    const s = window.getSelection();
+    if (s && s.toString().toLowerCase() === q.toLowerCase()) document.execCommand('insertText', false, r);
+    window.find(q, false, false, true);
+  }
+  function replaceAll() {
+    const q = document.getElementById('findInput').value;
+    const r = document.getElementById('replaceInput').value;
+    if (q) editor.innerHTML = editor.innerHTML.split(q).join(r);
+  }
+
+  // ── 단축키 ───────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && (e.key==='f'||e.key==='F')) { e.preventDefault(); toggleFind(); }
+    if (e.key==='Escape') { document.getElementById('findBar').classList.remove('show'); closeLinkDialog(); closeAllPopups(); }
+  });
+  editor.addEventListener('keydown', e => {
+    if (e.key==='Tab') { e.preventDefault(); document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;'); }
+    if (e.key==='ArrowDown') {
+      // 커서가 마지막 줄에 있는지 확인
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      // 현재 커서 위치의 bottom과 에디터 bottom 비교
+      const rects = range.getClientRects();
+      if (!rects.length) return;
+      const cursorBottom = rects[rects.length - 1].bottom;
+      const editorBottom = editor.getBoundingClientRect().bottom;
+      // 커서가 마지막 줄(에디터 하단 40px 이내)이면 새 단락 추가
+      if (editorBottom - cursorBottom < 40) {
+        e.preventDefault();
+        const p = document.createElement('p');
+        p.innerHTML = '<br>';
+        editor.appendChild(p);
+        // 커서를 새 단락으로 이동
+        const newRange = document.createRange();
+        newRange.setStart(p, 0);
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+        p.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      }
+    }
+  });
+
+  // 에디터 하단 여백 클릭 시 새 줄 추가 후 포커스
+  document.querySelector('.page').addEventListener('click', e => {
+    if (e.target !== editor && !editor.contains(e.target)) return;
+    if (e.target !== editor) return;
+    // 에디터 자체(빈 영역)를 클릭한 경우 — 마지막 자식 뒤에 커서 배치
+    const last = editor.lastElementChild;
+    if (last) {
+      const rect = last.getBoundingClientRect();
+      if (e.clientY > rect.bottom + 10) {
+        const p = document.createElement('p');
+        p.innerHTML = '<br>';
+        editor.appendChild(p);
+        const range = document.createRange();
+        range.setStart(p, 0);
+        range.collapse(true);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  });
+
+  // ── 내보내기 ─────────────────────────────────────
+  function exportHTML() {
+    const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>문서</title><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet"><style>body{font-family:'Noto Serif KR',serif;max-width:800px;margin:60px auto;font-size:16px;line-height:1.9;}</style></head><body>${editor.innerHTML}</body></html>`;
+    download('document.html', html, 'text/html');
+  }
+  function exportText() { download('document.txt', editor.innerText, 'text/plain'); }
+  function download(filename, content, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], {type}));
+    a.download = filename; a.click();
+  }
+  function printDoc() {
+    const styles = `
+      @page { size: auto; margin: 0 15mm; }
+      @media print {
+        html, body { margin: 0 !important; }
+        body { padding: 15mm 0 !important; }
+      }
+      body{font-family:'Noto Serif KR',serif;max-width:800px;margin:40px auto;font-size:15px;line-height:1.9;color:#111;word-break:keep-all;}
+      h1{font-size:2em;font-weight:700;margin:.5em 0 .3em;line-height:1.3;}
+      h2{font-size:1.5em;font-weight:600;margin:.8em 0 .3em;border-bottom:1px solid #ddd;padding-bottom:6px;}
+      h3{font-size:1.2em;font-weight:600;margin:.8em 0 .2em;}
+      p{margin:.5em 0;} ul,ol{padding-left:2em;margin:.5em 0;}
+      blockquote{border-left:3px solid #c4a55e;margin:1em 0;padding:.5em 1.2em;color:#666;background:#fdf8ee;}
+      table{border-collapse:collapse;width:100%;margin:1em 0;}
+      td,th{border:1px solid #ddd;padding:8px 12px;text-align:left;}
+      th{background:#f5f0e8;font-weight:600;}
+      hr{border:none;border-top:1px solid #ddd;margin:2em 0;}
+      code{font-family:monospace;background:#f4f0e8;padding:2px 6px;border-radius:3px;}
+      pre{font-family:monospace;background:#f4f0e8;padding:16px;border-radius:6px;border:1px solid #ddd;}
+      .yt-wrap{position:relative;width:100%;padding-bottom:56.25%;margin:1em 0;background:#000;border-radius:6px;overflow:hidden;}
+      .yt-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none;}
+    `;
+    const content = getRenderedHTML();
+
+    // 팝업 차단 시 window.open은 null 반환 → 대신 인쇄 전용 iframe 사용
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:800px;height:600px;border:none;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+      <style>${styles}</style></head><body>${content}</body></html>`);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+      iframe.contentWindow.print();
+      setTimeout(() => document.body.removeChild(iframe), 1000);
+    }, 800);
+  }
+</script>
+</body>
+</html>
